@@ -3,10 +3,10 @@ import p5 from 'p5';
 import axios from 'axios';
 
 function App() {
-  const color = useRef('#' + Math.floor(Math.random() * 16777215).toString(16));
-  const strokes = useRef([]);
-  const localBuffer = useRef([]); // Para acumular puntos antes de enviarlos
+  const color = useRef('#' + Math.floor(Math.random() * 16777215).toString(16)); // Color aleatorio por usuario
+  const strokes = useRef([]); // Lista global de trazos
   const canvasRef = useRef();
+  const lastSentTime = useRef(0); // Controla la frecuencia de envío al backend
 
   useEffect(() => {
     const sketch = (p) => {
@@ -19,43 +19,40 @@ function App() {
       p.draw = () => {
         p.clear();
         p.background(255);
-
-        // Dibuja todos los strokes recibidos
         strokes.current.forEach((stroke) => {
           p.fill(stroke.color);
           p.noStroke();
           p.ellipse(stroke.x, stroke.y, 15, 15);
         });
 
-        // Dibuja strokes locales aún no enviados (opcional)
-        localBuffer.current.forEach((stroke) => {
-          p.fill(stroke.color);
-          p.noStroke();
-          p.ellipse(stroke.x, stroke.y, 15, 15);
-        });
-
-        // Captura nuevos puntos
         if (
             p.mouseIsPressed &&
-            p.mouseX >= 0 &&
-            p.mouseX <= p.width &&
-            p.mouseY >= 0 &&
-            p.mouseY <= p.height
+            p.mouseX > 0 &&
+            p.mouseX < p.width &&
+            p.mouseY > 0 &&
+            p.mouseY < p.height
         ) {
-          const newStroke = {
-            x: p.mouseX,
-            y: p.mouseY,
-            color: color.current,
-          };
-          localBuffer.current.push(newStroke);
+          const now = Date.now();
+          if (now - lastSentTime.current > 100) {
+            lastSentTime.current = now;
+            const newStroke = {
+              x: p.mouseX,
+              y: p.mouseY,
+              color: color.current,
+            };
+            axios
+                .post('http://localhost:8080/strokes', newStroke)
+                .catch((err) => {
+                  console.error('POST failed:', err.response?.data || err.message);
+                });
+          }
         }
       };
     };
 
     canvasRef.current = new p5(sketch);
 
-    // GET loop: sincroniza desde el backend
-    const getInterval = setInterval(() => {
+    const interval = setInterval(() => {
       axios
           .get('http://localhost:8080/strokes')
           .then((response) => {
@@ -64,31 +61,20 @@ function App() {
           .catch((error) => {
             console.error('GET failed:', error.response?.data || error.message);
           });
-    }, 100); // 10 veces por segundo
-
-    // POST loop: envía cada 100ms los trazos locales acumulados
-    const postInterval = setInterval(() => {
-      if (localBuffer.current.length > 0) {
-        const batch = [...localBuffer.current];
-        localBuffer.current = []; // Vacía el buffer
-
-        axios
-            .post('http://localhost:8080/strokes', batch)
-            .catch((error) => {
-              console.error('POST failed:', error.response?.data || error.message);
-            });
-      }
-    }, 100);
+    }, 50);
 
     return () => {
-      clearInterval(getInterval);
-      clearInterval(postInterval);
+      clearInterval(interval);
       canvasRef.current.remove();
     };
   }, []);
 
   const clearCanvas = () => {
-    axios.delete('http://localhost:8080/strokes');
+    axios
+        .delete('http://localhost:8080/strokes')
+        .catch((error) => {
+          console.error('DELETE failed:', error.response?.data || error.message);
+        });
   };
 
   return (
