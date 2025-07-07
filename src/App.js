@@ -3,10 +3,16 @@ import p5 from 'p5';
 import axios from 'axios';
 
 function App() {
-  const color = useRef('#' + Math.floor(Math.random() * 16777215).toString(16)); // Color aleatorio por usuario
-  const strokes = useRef([]); // Lista global de trazos
+  const color = useRef('#' + Math.floor(Math.random() * 16777215).toString(16));
+  const strokes = useRef([]);
   const canvasRef = useRef();
-  const lastSentTime = useRef(0); // Controla la frecuencia de envío al backend
+  const lastSentTime = useRef(0);
+
+  // Detectar IP del backend
+  const API_BASE_URL =
+      window.location.hostname === 'localhost'
+          ? 'http://localhost:8080'
+          : `http://${window.location.hostname}:8080`;
 
   useEffect(() => {
     const sketch = (p) => {
@@ -41,7 +47,7 @@ function App() {
               color: color.current,
             };
             axios
-                .post('http://localhost:8080/strokes', newStroke)
+                .post(`${API_BASE_URL}/strokes`, newStroke)
                 .catch((err) => {
                   console.error('POST failed:', err.response?.data || err.message);
                 });
@@ -54,7 +60,7 @@ function App() {
 
     const interval = setInterval(() => {
       axios
-          .get('http://localhost:8080/strokes')
+          .get(`${API_BASE_URL}/strokes`)
           .then((response) => {
             strokes.current = response.data;
           })
@@ -67,11 +73,11 @@ function App() {
       clearInterval(interval);
       canvasRef.current.remove();
     };
-  }, []);
+  }, [API_BASE_URL]);
 
   const clearCanvas = () => {
     axios
-        .delete('http://localhost:8080/strokes')
+        .delete(`${API_BASE_URL}/strokes`)
         .catch((error) => {
           console.error('DELETE failed:', error.response?.data || error.message);
         });
