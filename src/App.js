@@ -78,7 +78,7 @@ function App() {
         .catch((err) => {
           console.error('GET failed:', err.response?.data || err.message);
         });
-    }, 5);
+    }, 50);
 
     return () => {
       clearInterval(interval);
