@@ -56,7 +56,10 @@ function App() {
       };
     };
 
-    canvasRef.current = new p5(sketch);
+    if (canvasRef.current) {
+        canvasRef.current.remove();
+      }
+      canvasRef.current = new p5(sketch);
 
     const interval = setInterval(() => {
       axios
