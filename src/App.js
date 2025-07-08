@@ -5,20 +5,21 @@ import axios from 'axios';
 function App() {
   const color = useRef('#' + Math.floor(Math.random() * 16777215).toString(16));
   const strokes = useRef([]);
-  const canvasRef = useRef();
+  const canvasRef = useRef(null);
   const lastSentTime = useRef(0);
 
-  // Detectar IP del backend
   const API_BASE_URL =
-      window.location.hostname === 'localhost'
-          ? 'http://localhost:8080'
-          : `http://${window.location.hostname}:8080`;
+    window.location.hostname === 'localhost'
+      ? 'http://localhost:8080'
+      : `http://${window.location.hostname}:8080`;
 
   useEffect(() => {
+    let p5Instance;
+
     const sketch = (p) => {
       p.setup = () => {
         const canvas = p.createCanvas(700, 500);
-        canvas.parent('container');
+        canvas.parent('p5-container');
         p.background(255);
       };
 
@@ -33,10 +34,10 @@ function App() {
 
         if (
           p.mouseIsPressed &&
-          p.mouseX > 0 &&
-          p.mouseX < p.width &&
-          p.mouseY > 0 &&
-          p.mouseY < p.height
+          p.mouseX >= 0 &&
+          p.mouseX <= p.width &&
+          p.mouseY >= 0 &&
+          p.mouseY <= p.height
         ) {
           const now = Date.now();
           if (now - lastSentTime.current > 100) {
@@ -54,48 +55,44 @@ function App() {
       };
     };
 
-    // Limpiar canvas anterior del DOM
-    const container = document.getElementById('container');
-    if (container) {
-      container.innerHTML = '';
-    }
-
     if (canvasRef.current) {
       canvasRef.current.remove();
     }
+
     canvasRef.current = new p5(sketch);
+    p5Instance = canvasRef.current;
 
     const interval = setInterval(() => {
       axios
         .get(`${API_BASE_URL}/strokes`)
-        .then((response) => {
-          strokes.current = response.data;
+        .then((res) => {
+          strokes.current = res.data;
         })
-        .catch((error) => {
-          console.error('GET failed:', error.response?.data || error.message);
+        .catch((err) => {
+          console.error('GET failed:', err.response?.data || err.message);
         });
-    }, 50);
+    }, 100);
 
     return () => {
       clearInterval(interval);
-      canvasRef.current.remove();
+      if (p5Instance) {
+        p5Instance.remove();
+      }
     };
   }, []);
 
   const clearCanvas = () => {
-    axios
-        .delete(`${API_BASE_URL}/strokes`)
-        .catch((error) => {
-          console.error('DELETE failed:', error.response?.data || error.message);
-        });
+    axios.delete(`${API_BASE_URL}/strokes`).catch((err) => {
+      console.error('DELETE failed:', err.response?.data || err.message);
+    });
   };
 
   return (
-      <div>
-        <h2>Collaborative Drawing Board</h2>
-        <div id="container"></div>
-        <button onClick={clearCanvas}>Clear</button>
-      </div>
+    <div>
+      <h2>Collaborative Drawing Board</h2>
+      <div id="p5-container"></div>
+      <button onClick={clearCanvas}>Clear</button>
+    </div>
   );
 }
 
