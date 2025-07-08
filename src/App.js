@@ -32,11 +32,11 @@ function App() {
         });
 
         if (
-            p.mouseIsPressed &&
-            p.mouseX > 0 &&
-            p.mouseX < p.width &&
-            p.mouseY > 0 &&
-            p.mouseY < p.height
+          p.mouseIsPressed &&
+          p.mouseX > 0 &&
+          p.mouseX < p.width &&
+          p.mouseY > 0 &&
+          p.mouseY < p.height
         ) {
           const now = Date.now();
           if (now - lastSentTime.current > 100) {
@@ -46,37 +46,41 @@ function App() {
               y: p.mouseY,
               color: color.current,
             };
-            axios
-                .post(`${API_BASE_URL}/strokes`, newStroke)
-                .catch((err) => {
-                  console.error('POST failed:', err.response?.data || err.message);
-                });
+            axios.post(`${API_BASE_URL}/strokes`, newStroke).catch((err) => {
+              console.error('POST failed:', err.response?.data || err.message);
+            });
           }
         }
       };
     };
 
+    // Limpiar canvas anterior del DOM
+    const container = document.getElementById('container');
+    if (container) {
+      container.innerHTML = '';
+    }
+
     if (canvasRef.current) {
-        canvasRef.current.remove();
-      }
-      canvasRef.current = new p5(sketch);
+      canvasRef.current.remove();
+    }
+    canvasRef.current = new p5(sketch);
 
     const interval = setInterval(() => {
       axios
-          .get(`${API_BASE_URL}/strokes`)
-          .then((response) => {
-            strokes.current = response.data;
-          })
-          .catch((error) => {
-            console.error('GET failed:', error.response?.data || error.message);
-          });
+        .get(`${API_BASE_URL}/strokes`)
+        .then((response) => {
+          strokes.current = response.data;
+        })
+        .catch((error) => {
+          console.error('GET failed:', error.response?.data || error.message);
+        });
     }, 50);
 
     return () => {
       clearInterval(interval);
       canvasRef.current.remove();
     };
-  }, [API_BASE_URL]);
+  }, []);
 
   const clearCanvas = () => {
     axios
